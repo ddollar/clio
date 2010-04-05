@@ -14,7 +14,7 @@ post('/sessions', function() {
 
   // basic protection for invalid parameters
   if (!slug_id.match(/^[0-9a-f_]+$/)) { this.error('Invalid Slug');  return; }
-  if (!cloud.match(/^[a-z\.]+$/))       { this.error('Invalid Cloud'); return; }
+  if (!cloud.match(/^[a-z\.]+$/))     { this.error('Invalid Cloud'); return; }
 
   // create a session and start monitoring the slug's log file
   var session = LogMonitor.monitor.create_session();
