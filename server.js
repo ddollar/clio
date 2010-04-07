@@ -29,4 +29,4 @@ get('/sessions/:id', function(id) {
   }
 });
 
-run(process.env["SERVER_PORT"] || 8000)
+run(process.env["SERVER_PORT"] || 8000, '0.0.0.0')
