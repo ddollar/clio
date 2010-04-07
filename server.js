@@ -1,45 +1,32 @@
-var sys = require('sys');
-var LogMonitor = require('./lib/log_monitor');
+require.paths.unshift('lib')
 require.paths.unshift('lib/express/lib')
+
+var sys = require('sys');
+
 require('express');
 
-var AUTH_KEY = 'owgnsfn83yh3pntb!lh93ydkgjbmsdf';
-var LOG_ROOT = '/logs';
+use(require('clio_session').ClioSession);
+use(require('validation').Validation);
 
-post('/sessions', function() {
-  if (this.headers.authorization != AUTH_KEY) { this.halt(401); }
+post('/sessions/static', function() {
+  return(this.create_clio_session({ continuous: false }));
+});
 
-  var slug_id = this.body;
-  var cloud   = this.headers.cloud;
-
-  // basic protection for invalid parameters
-  if (!slug_id.match(/^[0-9a-f_]+$/)) { this.error('Invalid Slug');  return; }
-  if (!cloud.match(/^[a-z\.]+$/))     { this.error('Invalid Cloud'); return; }
-
-  // create a session and start monitoring the slug's log file
-  var session = LogMonitor.monitor.create_session();
-  session.monitor_file(process, LOG_ROOT + '/' + cloud + '/' + slug_id + '.log');
-
-  // return the url to look for sessions
-  return('/sessions/' + session.id);
+post('/sessions/continuous', function() {
+  return(this.create_clio_session({ continuous: true }));
 });
 
 get('/sessions/:id', function(id) {
-  var session = LogMonitor.monitor.sessions[id];
+  var session = this.clio_session(id);
 
-  if (!session) { this.halt(404); }
-
-  // touch the session to keep it alive
-  session.touch();
-
-  // capture this session's data into a buffer
-  var data = '';
-  while (session.buffer.length > 0) { data += session.buffer.shift(); }
-
-  // return a not-modified if there's no data
-  if (data == '') { this.halt(304); }
-
-  return(data);
+  if (session.continuous || session.exited) {
+    this.respond_with_session(session);
+  } else {
+    var request = this;
+    session.addListener('exit', function() {
+      request.respond_with_session(session);
+    });
+  }
 });
 
 run(process.env["SERVER_PORT"] || 8000)
